@@ -1,0 +1,2 @@
+in= imgs_ph:0
+on= fullconv/Relu:0
