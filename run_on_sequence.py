@@ -1,5 +1,5 @@
 import numpy as np
-import cPickle
+import pickle
 import tensorflow as tf
 import cv2
 import os
@@ -8,7 +8,7 @@ from utilities import label_img_to_color
 
 from model import ENet_model
 
-project_dir = "/root/segmentation/"
+project_dir = "./
 
 data_dir = project_dir + "data/"
 
@@ -18,13 +18,12 @@ batch_size = 4
 img_height = 512
 img_width = 1024
 
-model = ENet_model(model_id, img_height=img_height, img_width=img_width,
-            batch_size=batch_size)
+model = ENet_model(model_id, img_height=img_height, img_width=img_width, batch_size=batch_size)
 
 no_of_classes = model.no_of_classes
 
 # load the mean color channels of the train imgs:
-train_mean_channels = cPickle.load(open("data/mean_channels.pkl"))
+train_mean_channels = pickle.load(open("data/mean_channels.pkl", "rb"))
 
 # load the sequence data:
 seq_frames_dir = "/root/data/cityscapes/leftImg8bit/demoVideo/stuttgart_02/"
@@ -32,7 +31,7 @@ seq_frame_paths = []
 frame_names = sorted(os.listdir(seq_frames_dir))
 for step, frame_name in enumerate(frame_names):
     if step % 100 == 0:
-        print step
+        print(step)
 
     frame_path = seq_frames_dir + frame_name
     seq_frame_paths.append(frame_path)
@@ -45,15 +44,15 @@ no_of_batches = int(no_of_frames/batch_size)
 results_dir = model.project_dir + "results_on_seq/"
 
 # create a saver for restoring variables/parameters:
-saver = tf.train.Saver(tf.trainable_variables(), write_version=tf.train.SaverDef.V2)
+saver = tf.train.Saver(tf.global_variables())
 
 with tf.Session() as sess:
     # initialize all variables/parameters:
-    init = tf.global_variables_initializer()
-    sess.run(init)
+    sess.run(tf.global_variables_initializer())
+    sess.run(tf.local_variables_initializer())
 
     # restore the best trained model:
-    saver.restore(sess, project_dir + "training_logs/best_model/model_1_epoch_23.ckpt")
+    saver.restore(sess, project_dir + "training_logs/best_model/model_1_epoch_25_final.ckpt")
 
     batch_pointer = 0
     for step in range(no_of_batches):
@@ -78,7 +77,7 @@ with tf.Session() as sess:
         # run a forward pass and get the logits:
         logits = sess.run(model.logits, feed_dict=batch_feed_dict)
 
-        print "step: %d/%d" % (step+1, no_of_batches)
+        print("step: %d/%d" % (step+1, no_of_batches))
 
         # save all predicted label images overlayed on the input frames to results_dir:
         predictions = np.argmax(logits, axis=3)
@@ -97,14 +96,12 @@ with tf.Session() as sess:
             cv2.imwrite(pred_path, overlayed_img)
 
 # create a video of all the resulting overlayed images:
-fourcc = cv2.cv.CV_FOURCC("M", "J", "P", "G")
-out = cv2.VideoWriter(results_dir + "cityscapes_stuttgart_02_pred.avi", fourcc,
-            20.0, (img_width, img_height))
+out = cv2.VideoWriter(results_dir + "cityscapes_stuttgart_02_pred.avi", cv2.VideoWriter_fourcc(*'XVID'), 20.0, (img_width, img_height), True)
 
 frame_names = sorted(os.listdir(results_dir))
 for step, frame_name in enumerate(frame_names):
     if step % 100 == 0:
-        print step
+        print(step)
 
     if ".png" in frame_name:
         frame_path = results_dir + frame_name
